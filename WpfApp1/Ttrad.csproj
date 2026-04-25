@@ -1,0 +1,68 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<UseWindowsForms>true</UseWindowsForms>
+		<AssemblyName>Ttrad</AssemblyName>
+		<RootNamespace>Ttrad</RootNamespace>
+		<ApplicationIcon>icon_ttrad.ico</ApplicationIcon>
+
+		<!-- Версии -->
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.1</FileVersion>
+		<Version>1.0.0</Version>
+
+		<!-- Информация об авторе и программе -->
+		<Authors>Timur Galimullin</Authors>
+		<Company>TVG</Company>
+		<Product>Ttrad</Product>
+		<Description>Hand drawing and text notes directly on your Windows desktop</Description>
+		<Copyright>© 2025-2026 Timur Galimullin (Тимур Галимуллин). Все права защищены.</Copyright>
+		<!-- <PackageProjectUrl>https://твой-сайт.ru</PackageProjectUrl> -->
+		<RepositoryUrl>https://github.com/TimurVG/ttrad</RepositoryUrl>
+	</PropertyGroup>
+
+	<!-- VERSIONINFO для Проводника Windows (свойства EXE) -->
+	<PropertyGroup>
+		<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+		<AssemblyTitle>Ttrad Desktop Marker</AssemblyTitle>
+		<Company>TVG</Company>
+		<Product>Ttrad</Product>
+		<Description>Hand drawing and text notes directly on your Windows desktop</Description>
+		<Copyright>© 2025-2026 Timur Galimullin (Тимур Галимуллин). Все права защищены.</Copyright>
+		<FileVersion>1.0.0.1</FileVersion>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Remove="icon_eraser_20.png" />
+		<None Remove="icon_eraser_32.png" />
+		<None Remove="icon_off.ico" />
+		<None Remove="icon_off_14.png" />
+		<None Remove="icon_off_20.png" />
+		<None Remove="icon_off_24.png" />
+		<None Remove="icon_off_32.png" />
+		<None Remove="icon_pen_16.png" />
+		<None Remove="icon_pen_20.png" />
+		<None Remove="icon_pen_32.png" />
+		<None Remove="icon_text_20.png" />
+		<None Remove="icon_text_32.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<EmbeddedResource Include="icon_eraser_20.png" />
+		<EmbeddedResource Include="icon_eraser_32.png" />
+		<EmbeddedResource Include="icon_off_20.png" />
+		<EmbeddedResource Include="icon_off_32.png" />
+		<EmbeddedResource Include="icon_ttrad.ico" />
+		<EmbeddedResource Include="icon_pen_20.png" />
+		<EmbeddedResource Include="icon_pen_32.png" />
+		<EmbeddedResource Include="icon_text_20.png" />
+		<EmbeddedResource Include="icon_text_32.png" />
+	</ItemGroup>
+
+</Project>

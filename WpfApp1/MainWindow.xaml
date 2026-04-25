@@ -1,0 +1,19 @@
+﻿<Window x:Class="Ttrad.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Desktop Marker"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="#01000000"
+        Topmost="False"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+
+    <Grid>
+        <InkCanvas x:Name="DrawingCanvas" 
+                   Background="Transparent"
+                   EditingMode="None"
+                   UseCustomCursor="True"
+                   Cursor="Arrow" />
+    </Grid>
+</Window>
