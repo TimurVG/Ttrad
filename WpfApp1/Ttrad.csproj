@@ -9,7 +9,7 @@
 		<UseWindowsForms>true</UseWindowsForms>
 		<AssemblyName>Ttrad</AssemblyName>
 		<RootNamespace>Ttrad</RootNamespace>
-		<ApplicationIcon>icon_ttrad.ico</ApplicationIcon>
+		<ApplicationIcon>icon_tt.ico</ApplicationIcon>
 
 		<!-- Версии -->
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
@@ -51,6 +51,8 @@
 		<None Remove="icon_pen_32.png" />
 		<None Remove="icon_text_20.png" />
 		<None Remove="icon_text_32.png" />
+		<None Remove="icon_tt.ico" />
+		<None Remove="icon_ttrad.ico" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -58,11 +60,11 @@
 		<EmbeddedResource Include="icon_eraser_32.png" />
 		<EmbeddedResource Include="icon_off_20.png" />
 		<EmbeddedResource Include="icon_off_32.png" />
-		<EmbeddedResource Include="icon_ttrad.ico" />
 		<EmbeddedResource Include="icon_pen_20.png" />
 		<EmbeddedResource Include="icon_pen_32.png" />
 		<EmbeddedResource Include="icon_text_20.png" />
 		<EmbeddedResource Include="icon_text_32.png" />
+		<EmbeddedResource Include="icon_tt.ico" />
 	</ItemGroup>
 
 </Project>

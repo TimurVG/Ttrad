@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -86,6 +87,9 @@ namespace Ttrad
         private string appFolder = "";
         private string settingsPath = "";
         private string textSavePath = "";
+        private string projectsFolder = "";
+        private string currentProjectPath = "";
+        private bool _isDirty = false;
         private IntPtr hwnd;
 
         private WinForms.NotifyIcon? notifyIcon;
@@ -123,7 +127,7 @@ namespace Ttrad
 
         private IntPtr _currentRegion = IntPtr.Zero;
 
-        // Undo — 10 шагов
+        // Undo
         private List<Stroke> _penUndoStack = new List<Stroke>();
         private List<List<Stroke>> _eraserUndoStack = new List<List<Stroke>>();
         private const int MaxUndoSteps = 10;
@@ -136,6 +140,8 @@ namespace Ttrad
             savePath = Path.Combine(appFolder, "drawing.json");
             settingsPath = Path.Combine(appFolder, "settings.json");
             textSavePath = Path.Combine(appFolder, "text.json");
+            projectsFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Ttrad Projects");
+            Directory.CreateDirectory(projectsFolder);
             LoadSettings();
             this.SourceInitialized += OnSourceInitialized;
             this.Closing += OnClosing;
@@ -528,6 +534,7 @@ namespace Ttrad
                 _penUndoStack.RemoveAt(0);
             if (undoMenuItem != null) undoMenuItem.Enabled = true;
             _eraserUndoStack.Clear();
+            _isDirty = true;
         }
 
         private void OnCanvasMouseDown(object sender, WpfMouseButtonEventArgs e)
@@ -545,6 +552,7 @@ namespace Ttrad
                     _eraserUndoStack.RemoveAt(0);
                 if (undoMenuItem != null) undoMenuItem.Enabled = true;
                 _penUndoStack.Clear();
+                _isDirty = true;
 
                 isErasingActive = true;
                 lastEraserPoint = e.GetPosition(DrawingCanvas);
@@ -567,7 +575,6 @@ namespace Ttrad
 
         private void UndoLastAction()
         {
-            // Отмена ластика (восстановление снимка канвы)
             if (_eraserUndoStack.Count > 0)
             {
                 var snapshot = _eraserUndoStack[_eraserUndoStack.Count - 1];
@@ -577,8 +584,8 @@ namespace Ttrad
                 foreach (Stroke s in snapshot)
                     DrawingCanvas.Strokes.Add(s);
                 SaveDrawing();
+                _isDirty = true;
             }
-            // Отмена карандаша (удаление последнего штриха)
             else if (_penUndoStack.Count > 0)
             {
                 var lastStroke = _penUndoStack[_penUndoStack.Count - 1];
@@ -587,6 +594,7 @@ namespace Ttrad
                 if (DrawingCanvas.Strokes.Contains(lastStroke))
                     DrawingCanvas.Strokes.Remove(lastStroke);
                 SaveDrawing();
+                _isDirty = true;
             }
 
             if (undoMenuItem != null)
@@ -602,6 +610,286 @@ namespace Ttrad
         { try { var data = DrawingCanvas.Strokes.Select(s => new StrokeData { Points = s.StylusPoints.Select(p => new WpfPoint(p.X, p.Y)).ToList(), Color = s.DrawingAttributes.Color.ToString(), Width = s.DrawingAttributes.Width, Height = s.DrawingAttributes.Height }).ToList(); File.WriteAllText(savePath, JsonSerializer.Serialize(data)); } catch { } }
         private void LoadDrawing()
         { try { if (!File.Exists(savePath)) return; var data = JsonSerializer.Deserialize<List<StrokeData>>(File.ReadAllText(savePath)); if (data == null) return; foreach (var d in data) { var pts = new System.Windows.Input.StylusPointCollection(); foreach (var p in d.Points) pts.Add(new System.Windows.Input.StylusPoint(p.X, p.Y)); var s = new Stroke(pts); s.DrawingAttributes = new DrawingAttributes { Color = (WpfColor)System.Windows.Media.ColorConverter.ConvertFromString(d.Color), Width = d.Width, Height = d.Height }; DrawingCanvas.Strokes.Add(s); } } catch { } }
+
+        // ==================== ПРОЕКТЫ ====================
+
+        private bool HasUnsavedWork()
+        {
+            return _isDirty;
+        }
+
+        private bool ConfirmSaveBeforeAction(string action)
+        {
+            if (!HasUnsavedWork()) return true;
+            var result = WinForms.MessageBox.Show(
+                currentLanguage == "ru"
+                    ? $"У вас есть несохранённые заметки. Сохранить перед {action}?"
+                    : $"You have unsaved notes. Save before {action}?",
+                "Ttrad",
+                WinForms.MessageBoxButtons.YesNoCancel,
+                WinForms.MessageBoxIcon.Question);
+            if (result == WinForms.DialogResult.Yes)
+            {
+                SaveProject();
+                return true;
+            }
+            return result == WinForms.DialogResult.No;
+        }
+
+        private void NewProject()
+        {
+            if (!ConfirmSaveBeforeAction(currentLanguage == "ru" ? "созданием нового" : "creating new"))
+                return;
+
+            DrawingCanvas.Strokes.Clear();
+            foreach (var el in textElements)
+                textCanvas?.Children.Remove(el);
+            textElements.Clear();
+            _penUndoStack.Clear();
+            _eraserUndoStack.Clear();
+            if (undoMenuItem != null) undoMenuItem.Enabled = false;
+            currentProjectPath = "";
+            _isDirty = false;
+            SaveDrawing();
+            SaveTextElements();
+        }
+
+        private void SaveProject()
+        {
+            if (string.IsNullOrEmpty(currentProjectPath))
+            {
+                SaveProjectAs();
+                return;
+            }
+            SaveProjectToFile(currentProjectPath);
+        }
+
+        private void SaveProjectAs()
+        {
+            var dialog = new WinForms.SaveFileDialog
+            {
+                Title = currentLanguage == "ru" ? "Сохранить проект как" : "Save Project As",
+                Filter = "Ttrad Project (*.ttrad)|*.ttrad",
+                DefaultExt = "ttrad",
+                InitialDirectory = projectsFolder,
+                FileName = currentLanguage == "ru" ? "Мои заметки.ttrad" : "My Notes.ttrad"
+            };
+            if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+            {
+                currentProjectPath = dialog.FileName;
+                SaveProjectToFile(currentProjectPath);
+            }
+        }
+
+        private void SaveProjectToFile(string path)
+        {
+            try
+            {
+                var drawingData = DrawingCanvas.Strokes.Select(s => new StrokeData
+                {
+                    Points = s.StylusPoints.Select(p => new WpfPoint(p.X, p.Y)).ToList(),
+                    Color = s.DrawingAttributes.Color.ToString(),
+                    Width = s.DrawingAttributes.Width,
+                    Height = s.DrawingAttributes.Height
+                }).ToList();
+
+                var textData = new List<TextElementData>();
+                foreach (Canvas container in textElements)
+                {
+                    if (container.Children.Count == 0) continue;
+                    var tb = container.Children[0] as WpfTextBlock;
+                    if (tb != null)
+                        textData.Add(new TextElementData
+                        {
+                            Text = tb.Text,
+                            X = Canvas.GetLeft(container),
+                            Y = Canvas.GetTop(container),
+                            FontFamily = tb.FontFamily.Source,
+                            FontSize = tb.FontSize,
+                            FontStyle = tb.FontStyle.ToString(),
+                            FontWeight = tb.FontWeight.ToString(),
+                            Color = ((SolidColorBrush)tb.Foreground).Color.ToString()
+                        });
+                }
+
+                var project = new ProjectData
+                {
+                    Drawing = drawingData,
+                    Text = textData,
+                    VirtualScreenWidth = SystemParameters.VirtualScreenWidth,
+                    VirtualScreenHeight = SystemParameters.VirtualScreenHeight
+                };
+
+                var json = JsonSerializer.Serialize(project);
+                using (var fs = new FileStream(path, FileMode.Create))
+                using (var archive = new ZipArchive(fs, ZipArchiveMode.Create))
+                {
+                    var entry = archive.CreateEntry("data.json");
+                    using (var writer = new StreamWriter(entry.Open()))
+                        writer.Write(json);
+                }
+                _isDirty = false;
+            }
+            catch (Exception ex)
+            {
+                WinForms.MessageBox.Show(
+                    (currentLanguage == "ru" ? "Ошибка сохранения: " : "Save error: ") + ex.Message,
+                    "Ttrad", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error);
+            }
+        }
+
+        private void OpenProject()
+        {
+            if (!ConfirmSaveBeforeAction(currentLanguage == "ru" ? "открытием другого" : "opening another"))
+                return;
+
+            var dialog = new WinForms.OpenFileDialog
+            {
+                Title = currentLanguage == "ru" ? "Открыть проект" : "Open Project",
+                Filter = "Ttrad Project (*.ttrad)|*.ttrad",
+                DefaultExt = "ttrad",
+                InitialDirectory = projectsFolder
+            };
+            if (dialog.ShowDialog() != WinForms.DialogResult.OK) return;
+
+            try
+            {
+                ProjectData? project = null;
+                using (var fs = new FileStream(dialog.FileName, FileMode.Open))
+                using (var archive = new ZipArchive(fs, ZipArchiveMode.Read))
+                {
+                    var entry = archive.GetEntry("data.json");
+                    if (entry != null)
+                    {
+                        using (var reader = new StreamReader(entry.Open()))
+                            project = JsonSerializer.Deserialize<ProjectData>(reader.ReadToEnd());
+                    }
+                }
+
+                if (project == null)
+                {
+                    WinForms.MessageBox.Show(
+                        currentLanguage == "ru" ? "Файл повреждён." : "File is corrupted.",
+                        "Ttrad", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error);
+                    return;
+                }
+
+                double currentW = SystemParameters.VirtualScreenWidth;
+                double currentH = SystemParameters.VirtualScreenHeight;
+                bool needsShift = false;
+                double minX = double.MaxValue, minY = double.MaxValue;
+                double maxX = double.MinValue, maxY = double.MinValue;
+
+                foreach (var d in project.Drawing)
+                {
+                    foreach (var p in d.Points)
+                    {
+                        if (p.X < minX) minX = p.X;
+                        if (p.Y < minY) minY = p.Y;
+                        if (p.X > maxX) maxX = p.X;
+                        if (p.Y > maxY) maxY = p.Y;
+                    }
+                }
+                foreach (var t in project.Text)
+                {
+                    if (t.X < minX) minX = t.X;
+                    if (t.Y < minY) minY = t.Y;
+                    if (t.X > maxX) maxX = t.X;
+                    if (t.Y > maxY) maxY = t.Y;
+                }
+
+                if (minX == double.MaxValue) { minX = 0; minY = 0; maxX = 0; maxY = 0; }
+
+                double shiftX = 0, shiftY = 0;
+                if (minX < 0 || maxX >= currentW || minY < 0 || maxY >= currentH)
+                    needsShift = true;
+
+                if (needsShift)
+                {
+                    var shiftResult = WinForms.MessageBox.Show(
+                        currentLanguage == "ru"
+                            ? "Заметки были созданы на другом разрешении. Сдвинуть в видимую область?"
+                            : "Notes were created on a different resolution. Shift to visible area?",
+                        "Ttrad",
+                        WinForms.MessageBoxButtons.YesNo,
+                        WinForms.MessageBoxIcon.Question);
+                    if (shiftResult == WinForms.DialogResult.Yes)
+                    {
+                        shiftX = 50 - minX;
+                        shiftY = 50 - minY;
+                    }
+                }
+
+                DrawingCanvas.Strokes.Clear();
+                foreach (var el in textElements)
+                    textCanvas?.Children.Remove(el);
+                textElements.Clear();
+                _penUndoStack.Clear();
+                _eraserUndoStack.Clear();
+                if (undoMenuItem != null) undoMenuItem.Enabled = false;
+
+                foreach (var d in project.Drawing)
+                {
+                    var pts = new System.Windows.Input.StylusPointCollection();
+                    foreach (var p in d.Points)
+                        pts.Add(new System.Windows.Input.StylusPoint(p.X + shiftX, p.Y + shiftY));
+                    var s = new Stroke(pts);
+                    s.DrawingAttributes = new DrawingAttributes
+                    {
+                        Color = (WpfColor)System.Windows.Media.ColorConverter.ConvertFromString(d.Color),
+                        Width = d.Width,
+                        Height = d.Height
+                    };
+                    DrawingCanvas.Strokes.Add(s);
+                }
+
+                foreach (var t in project.Text)
+                {
+                    var textBlock = new WpfTextBlock
+                    {
+                        Text = t.Text,
+                        FontFamily = new WpfFontFamily(t.FontFamily),
+                        FontSize = t.FontSize,
+                        FontStyle = t.FontStyle == "Italic" ? WpfFontStyles.Italic : WpfFontStyles.Normal,
+                        FontWeight = t.FontWeight == "Bold" ? WpfFontWeights.Bold : WpfFontWeights.Normal,
+                        Foreground = new SolidColorBrush((WpfColor)System.Windows.Media.ColorConverter.ConvertFromString(t.Color)),
+                        Background = System.Windows.Media.Brushes.Transparent,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 400,
+                        Cursor = System.Windows.Input.Cursors.Hand
+                    };
+                    var contextMenu = new WpfContextMenu();
+                    var editItem = new WpfMenuItem { Header = strings.Edit };
+                    editItem.Click += (s, e) => EditTextBlock(textBlock);
+                    var deleteItem = new WpfMenuItem { Header = strings.Delete };
+                    deleteItem.Click += (s, e) => DeleteTextBlock(textBlock);
+                    contextMenu.Items.Add(editItem); contextMenu.Items.Add(deleteItem);
+                    textBlock.ContextMenu = contextMenu;
+                    textBlock.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) { EditTextBlock(textBlock); e.Handled = true; } };
+                    var container = new Canvas();
+                    Canvas.SetLeft(container, t.X + shiftX);
+                    Canvas.SetTop(container, t.Y + shiftY);
+                    container.Children.Add(textBlock);
+                    container.Background = System.Windows.Media.Brushes.Transparent;
+                    MakeTextDraggable(container, textBlock);
+                    textCanvas?.Children.Add(container);
+                    textElements.Add(container);
+                }
+
+                currentProjectPath = dialog.FileName;
+                _isDirty = false;
+                SaveDrawing();
+                SaveTextElements();
+            }
+            catch (Exception ex)
+            {
+                WinForms.MessageBox.Show(
+                    (currentLanguage == "ru" ? "Ошибка открытия: " : "Open error: ") + ex.Message,
+                    "Ttrad", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error);
+            }
+        }
+
+        // ==================== /ПРОЕКТЫ ====================
 
         private void ShowTextInputWindow()
         {
@@ -675,7 +963,9 @@ namespace Ttrad
             textBlock.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) { EditTextBlock(textBlock); e.Handled = true; } };
             var container = new Canvas(); Canvas.SetLeft(container, textInsertPoint.X); Canvas.SetTop(container, textInsertPoint.Y); container.Children.Add(textBlock); container.Background = System.Windows.Media.Brushes.Transparent;
             MakeTextDraggable(container, textBlock);
-            textCanvas?.Children.Add(container); textElements.Add(container); currentTextBox = null; SaveTextElements();
+            textCanvas?.Children.Add(container); textElements.Add(container); currentTextBox = null;
+            _isDirty = true;
+            SaveTextElements();
         }
 
         private void EditTextBlock(WpfTextBlock textBlock)
@@ -692,7 +982,7 @@ namespace Ttrad
         private void DeleteTextBlock(WpfTextBlock textBlock)
         {
             if (WinForms.MessageBox.Show("Удалить эту заметку?", "Подтверждение", WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Question) == WinForms.DialogResult.Yes)
-            { var container = textBlock.Parent as Canvas; if (container != null) { textCanvas?.Children.Remove(container); textElements.Remove(container); SaveTextElements(); } }
+            { var container = textBlock.Parent as Canvas; if (container != null) { textCanvas?.Children.Remove(container); textElements.Remove(container); SaveTextElements(); _isDirty = true; } }
         }
 
         private void SaveTextElements()
@@ -878,18 +1168,36 @@ namespace Ttrad
             settingsMenu.Items.Add(colorMenuItem);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
 
+            var newProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Новый" : "New");
+            newProjectItem.Click += (s, e) => { NewProject(); };
+            settingsMenu.Items.Add(newProjectItem);
+
+            var saveProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Сохранить" : "Save");
+            saveProjectItem.Click += (s, e) => { SaveProject(); };
+            settingsMenu.Items.Add(saveProjectItem);
+
+            var saveAsProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Сохранить как..." : "Save As...");
+            saveAsProjectItem.Click += (s, e) => { SaveProjectAs(); };
+            settingsMenu.Items.Add(saveAsProjectItem);
+
+            var openProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Открыть..." : "Open...");
+            openProjectItem.Click += (s, e) => { OpenProject(); };
+            settingsMenu.Items.Add(openProjectItem);
+
+            settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
+
             var helpItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Справка" : "Help");
             helpItem.Click += (s, e) =>
             {
                 if (currentLanguage == "ru")
                     WinForms.MessageBox.Show(
-                        "ЛКМ по иконке в трее — переключение инструментов\nПКМ по иконке — настройки\n\nКарандаш — рисуй по экрану\nЛастик — стирай нарисованное (толщина меняется)\n\nТекст:\n   • ЛКМ по пустому месту — ввод текста\n   • ЛКМ + удержание по тексту — перетаскивание\n   • ПКМ по тексту — редактировать / удалить\n\nОтменить — отмена последнего действия\n\nESC — выключить любой режим",
+                        "ЛКМ по иконке в трее — переключение инструментов\nПКМ по иконке — настройки\n\nКарандаш — рисуй по экрану\nЛастик — стирай нарисованное (толщина меняется)\n\nТекст:\n   • ЛКМ по пустому месту — ввод текста\n   • ЛКМ + удержание по тексту — перетаскивание\n   • ПКМ по тексту — редактировать / удалить\n\nОтменить — отмена последнего действия\n\nНовый — очистить всё\nСохранить/Открыть — проекты (.ttrad)\n\nESC — выключить любой режим",
                         "Ttrad - Справка",
                         WinForms.MessageBoxButtons.OK,
                         WinForms.MessageBoxIcon.Information);
                 else
                     WinForms.MessageBox.Show(
-                        "Left Click on tray icon — switch tools\nRight Click on tray icon — settings\n\nPen — draw on screen\nEraser — erase drawings (thickness adjustable)\n\nText:\n   • Left Click on empty space — add text\n   • Left Click + hold on text — drag\n   • Right Click on text — edit / delete\n\nUndo — restore last action\n\nESC — exit any mode",
+                        "Left Click on tray icon — switch tools\nRight Click on tray icon — settings\n\nPen — draw on screen\nEraser — erase drawings (thickness adjustable)\n\nText:\n   • Left Click on empty space — add text\n   • Left Click + hold on text — drag\n   • Right Click on text — edit / delete\n\nUndo — restore last action\n\nNew — clear all\nSave/Open — projects (.ttrad)\n\nESC — exit any mode",
                         "Ttrad - Help",
                         WinForms.MessageBoxButtons.OK,
                         WinForms.MessageBoxIcon.Information);
@@ -902,7 +1210,33 @@ namespace Ttrad
             langMenu.DropDownItems.Add(ru); langMenu.DropDownItems.Add(en); settingsMenu.Items.Add(langMenu); settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
 
             var clearItem = new WinForms.ToolStripMenuItem(strings.ClearAll);
-            clearItem.Click += (s, e) => { if (WinForms.MessageBox.Show(strings.ClearConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Warning) == WinForms.DialogResult.Yes) { DrawingCanvas.Strokes.Clear(); foreach (var el in textElements) textCanvas?.Children.Remove(el); textElements.Clear(); _penUndoStack.Clear(); _eraserUndoStack.Clear(); if (undoMenuItem != null) undoMenuItem.Enabled = false; SaveDrawing(); SaveTextElements(); } };
+            clearItem.Click += (s, e) =>
+            {
+                if (HasUnsavedWork())
+                {
+                    var saveResult = WinForms.MessageBox.Show(
+                        currentLanguage == "ru" ? "Сохранить текущие заметки перед очисткой?" : "Save current notes before clearing?",
+                        "Ttrad",
+                        WinForms.MessageBoxButtons.YesNoCancel,
+                        WinForms.MessageBoxIcon.Question);
+                    if (saveResult == WinForms.DialogResult.Yes)
+                        SaveProject();
+                    else if (saveResult == WinForms.DialogResult.Cancel)
+                        return;
+                }
+                if (WinForms.MessageBox.Show(strings.ClearConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Warning) == WinForms.DialogResult.Yes)
+                {
+                    DrawingCanvas.Strokes.Clear();
+                    foreach (var el in textElements) textCanvas?.Children.Remove(el);
+                    textElements.Clear();
+                    _penUndoStack.Clear();
+                    _eraserUndoStack.Clear();
+                    if (undoMenuItem != null) undoMenuItem.Enabled = false;
+                    _isDirty = false;
+                    SaveDrawing();
+                    SaveTextElements();
+                }
+            };
             settingsMenu.Items.Add(clearItem); settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
 
             var startupItem = new WinForms.ToolStripMenuItem(strings.Startup); startupItem.Checked = IsStartupEnabled();
@@ -910,7 +1244,27 @@ namespace Ttrad
             settingsMenu.Items.Add(startupItem); settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
 
             var exitItem = new WinForms.ToolStripMenuItem(strings.Exit);
-            exitItem.Click += (s, e) => { if (WinForms.MessageBox.Show(strings.ExitConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Question) == WinForms.DialogResult.Yes) { isExiting = true; notifyIcon?.Dispose(); WpfApplication.Current.Shutdown(); } };
+            exitItem.Click += (s, e) =>
+            {
+                if (_isDirty)
+                {
+                    var saveResult = WinForms.MessageBox.Show(
+                        currentLanguage == "ru" ? "Сохранить заметки перед выходом?" : "Save notes before exit?",
+                        "Ttrad",
+                        WinForms.MessageBoxButtons.YesNoCancel,
+                        WinForms.MessageBoxIcon.Question);
+                    if (saveResult == WinForms.DialogResult.Yes)
+                        SaveProject();
+                    else if (saveResult == WinForms.DialogResult.Cancel)
+                        return;
+                }
+                if (WinForms.MessageBox.Show(strings.ExitConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Question) == WinForms.DialogResult.Yes)
+                {
+                    isExiting = true;
+                    notifyIcon?.Dispose();
+                    WpfApplication.Current.Shutdown();
+                }
+            };
             settingsMenu.Items.Add(exitItem);
         }
 
@@ -936,7 +1290,26 @@ namespace Ttrad
 
         private void OnClosing(object? sender, CancelEventArgs e)
         {
-            if (!isExiting) { SaveDrawing(); SaveTextElements(); }
+            if (!isExiting)
+            {
+                if (_isDirty)
+                {
+                    var result = WinForms.MessageBox.Show(
+                        currentLanguage == "ru" ? "Сохранить заметки перед выходом?" : "Save notes before exit?",
+                        "Ttrad",
+                        WinForms.MessageBoxButtons.YesNoCancel,
+                        WinForms.MessageBoxIcon.Question);
+                    if (result == WinForms.DialogResult.Yes)
+                        SaveProject();
+                    else if (result == WinForms.DialogResult.Cancel)
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+                }
+                SaveDrawing();
+                SaveTextElements();
+            }
             if (_currentRegion != IntPtr.Zero)
             {
                 DeleteObject(_currentRegion);
@@ -947,6 +1320,13 @@ namespace Ttrad
 
         private class StrokeData { public List<WpfPoint> Points { get; set; } = new(); public string Color { get; set; } = ""; public double Width { get; set; } public double Height { get; set; } }
         private class TextElementData { public string Text { get; set; } = ""; public double X { get; set; } public double Y { get; set; } public string FontFamily { get; set; } = "Segoe UI"; public double FontSize { get; set; } = 16; public string FontStyle { get; set; } = "Normal"; public string FontWeight { get; set; } = "Normal"; public string Color { get; set; } = "#FFFF0000"; }
+        private class ProjectData
+        {
+            public List<StrokeData> Drawing { get; set; } = new();
+            public List<TextElementData> Text { get; set; } = new();
+            public double VirtualScreenWidth { get; set; }
+            public double VirtualScreenHeight { get; set; }
+        }
         private class AppSettings { public string? Language { get; set; } public bool FirstRunHintShown { get; set; } public bool EscHintShown { get; set; } }
 
         private class AppStrings
