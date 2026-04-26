@@ -7,8 +7,10 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -132,6 +134,9 @@ namespace Ttrad
         private List<List<Stroke>> _eraserUndoStack = new List<List<Stroke>>();
         private const int MaxUndoSteps = 10;
 
+        private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        private const string VersionUrl = "https://raw.githubusercontent.com/TimurVG/ttrad/main/version.json";
+
         public MainWindow()
         {
             InitializeComponent();
@@ -160,6 +165,7 @@ namespace Ttrad
             SetupTrayIcon();
             SetDrawingState(false);
             UpdateTrayIcon();
+            Task.Run(() => CheckForUpdates(false));
         }
 
         private void CreateTextCanvas()
@@ -891,6 +897,64 @@ namespace Ttrad
 
         // ==================== /ПРОЕКТЫ ====================
 
+        // ==================== ОБНОВЛЕНИЯ ====================
+
+        private async Task CheckForUpdates(bool showUpToDate)
+        {
+            try
+            {
+                var json = await _httpClient.GetStringAsync(VersionUrl);
+                var data = JsonSerializer.Deserialize<VersionData>(json);
+                if (data == null) return;
+
+                int currentVersion = int.Parse(strings.AppVersion);
+                int latestVersion = int.Parse(data.Version);
+
+                if (latestVersion > currentVersion)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        var result = WinForms.MessageBox.Show(
+                            currentLanguage == "ru"
+                                ? $"Доступна новая версия {data.Version}! Текущая: {strings.AppVersion}. Открыть страницу загрузки?"
+                                : $"New version {data.Version} available! Current: {strings.AppVersion}. Open download page?",
+                            "Ttrad - " + (currentLanguage == "ru" ? "Обновление" : "Update"),
+                            WinForms.MessageBoxButtons.YesNo,
+                            WinForms.MessageBoxIcon.Information);
+                        if (result == WinForms.DialogResult.Yes)
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(data.Url) { UseShellExecute = true });
+                    });
+                }
+                else if (showUpToDate)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        WinForms.MessageBox.Show(
+                            currentLanguage == "ru" ? "У вас последняя версия." : "You have the latest version.",
+                            "Ttrad",
+                            WinForms.MessageBoxButtons.OK,
+                            WinForms.MessageBoxIcon.Information);
+                    });
+                }
+            }
+            catch
+            {
+                if (showUpToDate)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        WinForms.MessageBox.Show(
+                            currentLanguage == "ru" ? "Не удалось проверить обновления." : "Failed to check for updates.",
+                            "Ttrad",
+                            WinForms.MessageBoxButtons.OK,
+                            WinForms.MessageBoxIcon.Warning);
+                    });
+                }
+            }
+        }
+
+        // ==================== /ОБНОВЛЕНИЯ ====================
+
         private void ShowTextInputWindow()
         {
             if (textInputWindow != null && textInputWindow.IsVisible) textInputWindow.Close();
@@ -1184,6 +1248,10 @@ namespace Ttrad
             openProjectItem.Click += (s, e) => { OpenProject(); };
             settingsMenu.Items.Add(openProjectItem);
 
+            var checkUpdatesItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Проверить обновления" : "Check for Updates");
+            checkUpdatesItem.Click += (s, e) => { Task.Run(() => CheckForUpdates(true)); };
+            settingsMenu.Items.Add(checkUpdatesItem);
+
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
 
             var helpItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Справка" : "Help");
@@ -1191,13 +1259,13 @@ namespace Ttrad
             {
                 if (currentLanguage == "ru")
                     WinForms.MessageBox.Show(
-                        "ЛКМ по иконке в трее — переключение инструментов\nПКМ по иконке — настройки\n\nКарандаш — рисуй по экрану\nЛастик — стирай нарисованное (толщина меняется)\n\nТекст:\n   • ЛКМ по пустому месту — ввод текста\n   • ЛКМ + удержание по тексту — перетаскивание\n   • ПКМ по тексту — редактировать / удалить\n\nОтменить — отмена последнего действия\n\nНовый — очистить всё\nСохранить/Открыть — проекты (.ttrad)\n\nESC — выключить любой режим",
+                        "ЛКМ по иконке в трее — переключение инструментов\nПКМ по иконке — настройки\n\nКарандаш — рисуй по экрану\nЛастик — стирай нарисованное (толщина меняется)\n\nТекст:\n   • ЛКМ по пустому месту — ввод текста\n   • ЛКМ + удержание по тексту — перетаскивание\n   • ПКМ по тексту — редактировать / удалить\n\nОтменить — отмена последнего действия\n\nНовый/Сохранить/Открыть — проекты (.ttrad)\nПроверить обновления — новая версия\n\nESC — выключить любой режим",
                         "Ttrad - Справка",
                         WinForms.MessageBoxButtons.OK,
                         WinForms.MessageBoxIcon.Information);
                 else
                     WinForms.MessageBox.Show(
-                        "Left Click on tray icon — switch tools\nRight Click on tray icon — settings\n\nPen — draw on screen\nEraser — erase drawings (thickness adjustable)\n\nText:\n   • Left Click on empty space — add text\n   • Left Click + hold on text — drag\n   • Right Click on text — edit / delete\n\nUndo — restore last action\n\nNew — clear all\nSave/Open — projects (.ttrad)\n\nESC — exit any mode",
+                        "Left Click on tray icon — switch tools\nRight Click on tray icon — settings\n\nPen — draw on screen\nEraser — erase drawings (thickness adjustable)\n\nText:\n   • Left Click on empty space — add text\n   • Left Click + hold on text — drag\n   • Right Click on text — edit / delete\n\nUndo — restore last action\n\nNew/Save/Open — projects (.ttrad)\nCheck for Updates — new version\n\nESC — exit any mode",
                         "Ttrad - Help",
                         WinForms.MessageBoxButtons.OK,
                         WinForms.MessageBoxIcon.Information);
@@ -1327,6 +1395,11 @@ namespace Ttrad
             public double VirtualScreenWidth { get; set; }
             public double VirtualScreenHeight { get; set; }
         }
+        private class VersionData
+        {
+            public string Version { get; set; } = "";
+            public string Url { get; set; } = "";
+        }
         private class AppSettings { public string? Language { get; set; } public bool FirstRunHintShown { get; set; } public bool EscHintShown { get; set; } }
 
         private class AppStrings
@@ -1353,6 +1426,7 @@ namespace Ttrad
             public string Startup { get; set; } = "Запускать с Windows";
             public string Exit { get; set; } = "Выход";
             public string ExitConfirm { get; set; } = "Выйти из Ttrad?";
+            public string AppVersion { get; set; } = "18";
 
             public void SetLanguage(string l)
             {
@@ -1366,6 +1440,7 @@ namespace Ttrad
                     ApplyAndClose = "Применить и закрыть"; ClearAll = "Очистить всё";
                     ClearConfirm = "Будут удалены все рисунки и весь текст. Продолжить?";
                     Startup = "Запускать с Windows"; Exit = "Выход"; ExitConfirm = "Выйти из Ttrad?";
+                    AppVersion = "18";
                 }
                 else
                 {
@@ -1377,6 +1452,7 @@ namespace Ttrad
                     ApplyAndClose = "Apply and Close"; ClearAll = "Clear All";
                     ClearConfirm = "All drawings and text will be deleted. Continue?";
                     Startup = "Run on Windows Startup"; Exit = "Exit"; ExitConfirm = "Exit Ttrad?";
+                    AppVersion = "18";
                 }
             }
         }
