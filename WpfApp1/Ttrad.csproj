@@ -53,6 +53,13 @@
 		<None Remove="icon_text_32.png" />
 		<None Remove="icon_tt.ico" />
 		<None Remove="icon_ttrad.ico" />
+		<None Remove="version.json" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="version.json">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </Content>
 	</ItemGroup>
 
 	<ItemGroup>
