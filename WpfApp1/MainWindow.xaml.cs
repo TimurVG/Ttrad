@@ -536,8 +536,7 @@ namespace Ttrad
         private void OnStrokeCollected(object? sender, InkCanvasStrokeCollectedEventArgs e)
         {
             _penUndoStack.Add(e.Stroke);
-            if (_penUndoStack.Count > MaxUndoSteps)
-                _penUndoStack.RemoveAt(0);
+            if (_penUndoStack.Count > MaxUndoSteps) _penUndoStack.RemoveAt(0);
             if (undoMenuItem != null) undoMenuItem.Enabled = true;
             _eraserUndoStack.Clear();
             _isDirty = true;
@@ -547,19 +546,15 @@ namespace Ttrad
         {
             if (!isDrawingEnabled) return;
             this.Activate(); this.Focus();
-
             if (isErasing && !isTextMode)
             {
                 var snapshot = new List<Stroke>();
-                foreach (Stroke s in DrawingCanvas.Strokes)
-                    snapshot.Add(s.Clone());
+                foreach (Stroke s in DrawingCanvas.Strokes) snapshot.Add(s.Clone());
                 _eraserUndoStack.Add(snapshot);
-                if (_eraserUndoStack.Count > MaxUndoSteps)
-                    _eraserUndoStack.RemoveAt(0);
+                if (_eraserUndoStack.Count > MaxUndoSteps) _eraserUndoStack.RemoveAt(0);
                 if (undoMenuItem != null) undoMenuItem.Enabled = true;
                 _penUndoStack.Clear();
                 _isDirty = true;
-
                 isErasingActive = true;
                 lastEraserPoint = e.GetPosition(DrawingCanvas);
                 EraseAtPoint(lastEraserPoint);
@@ -570,14 +565,7 @@ namespace Ttrad
         { if (!isDrawingEnabled || !isErasing || !isErasingActive || isTextMode) return; WpfPoint pos = e.GetPosition(DrawingCanvas); if (Math.Sqrt(Math.Pow(pos.X - lastEraserPoint.X, 2) + Math.Pow(pos.Y - lastEraserPoint.Y, 2)) > currentThickness / 2) { EraseAtPoint(pos); lastEraserPoint = pos; } }
 
         private void OnCanvasMouseUp(object sender, WpfMouseButtonEventArgs e)
-        {
-            if (isErasing)
-            {
-                isErasingActive = false;
-                this.Focus();
-                SaveDrawing();
-            }
-        }
+        { if (isErasing) { isErasingActive = false; this.Focus(); SaveDrawing(); } }
 
         private void UndoLastAction()
         {
@@ -585,26 +573,18 @@ namespace Ttrad
             {
                 var snapshot = _eraserUndoStack[_eraserUndoStack.Count - 1];
                 _eraserUndoStack.RemoveAt(_eraserUndoStack.Count - 1);
-
                 DrawingCanvas.Strokes.Clear();
-                foreach (Stroke s in snapshot)
-                    DrawingCanvas.Strokes.Add(s);
-                SaveDrawing();
-                _isDirty = true;
+                foreach (Stroke s in snapshot) DrawingCanvas.Strokes.Add(s);
+                SaveDrawing(); _isDirty = true;
             }
             else if (_penUndoStack.Count > 0)
             {
                 var lastStroke = _penUndoStack[_penUndoStack.Count - 1];
                 _penUndoStack.RemoveAt(_penUndoStack.Count - 1);
-
-                if (DrawingCanvas.Strokes.Contains(lastStroke))
-                    DrawingCanvas.Strokes.Remove(lastStroke);
-                SaveDrawing();
-                _isDirty = true;
+                if (DrawingCanvas.Strokes.Contains(lastStroke)) DrawingCanvas.Strokes.Remove(lastStroke);
+                SaveDrawing(); _isDirty = true;
             }
-
-            if (undoMenuItem != null)
-                undoMenuItem.Enabled = _penUndoStack.Count > 0 || _eraserUndoStack.Count > 0;
+            if (undoMenuItem != null) undoMenuItem.Enabled = _penUndoStack.Count > 0 || _eraserUndoStack.Count > 0;
         }
 
         private void EraseAtPoint(WpfPoint point)
@@ -623,9 +603,7 @@ namespace Ttrad
         {
             if (!HasUnsavedWork()) return true;
             var result = WinForms.MessageBox.Show(
-                currentLanguage == "ru"
-                    ? $"У вас есть несохранённые заметки. Сохранить перед {action}?"
-                    : $"You have unsaved notes. Save before {action}?",
+                currentLanguage == "ru" ? $"У вас есть несохранённые заметки. Сохранить перед {action}?" : $"You have unsaved notes. Save before {action}?",
                 "Ttrad", WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question);
             if (result == WinForms.DialogResult.Yes) { SaveProject(); return true; }
             return result == WinForms.DialogResult.No;
@@ -636,29 +614,18 @@ namespace Ttrad
             if (!ConfirmSaveBeforeAction(currentLanguage == "ru" ? "созданием нового" : "creating new")) return;
             DrawingCanvas.Strokes.Clear();
             foreach (var el in textElements) textCanvas?.Children.Remove(el);
-            textElements.Clear();
-            _penUndoStack.Clear(); _eraserUndoStack.Clear();
+            textElements.Clear(); _penUndoStack.Clear(); _eraserUndoStack.Clear();
             if (undoMenuItem != null) undoMenuItem.Enabled = false;
             currentProjectPath = ""; _isDirty = false;
             SaveDrawing(); SaveTextElements();
         }
 
         private void SaveProject()
-        {
-            if (string.IsNullOrEmpty(currentProjectPath)) { SaveProjectAs(); return; }
-            SaveProjectToFile(currentProjectPath);
-        }
+        { if (string.IsNullOrEmpty(currentProjectPath)) { SaveProjectAs(); return; } SaveProjectToFile(currentProjectPath); }
 
         private void SaveProjectAs()
         {
-            var dialog = new WinForms.SaveFileDialog
-            {
-                Title = currentLanguage == "ru" ? "Сохранить проект как" : "Save Project As",
-                Filter = "Ttrad Project (*.ttrad)|*.ttrad",
-                DefaultExt = "ttrad",
-                InitialDirectory = projectsFolder,
-                FileName = currentLanguage == "ru" ? "Мои заметки.ttrad" : "My Notes.ttrad"
-            };
+            var dialog = new WinForms.SaveFileDialog { Title = currentLanguage == "ru" ? "Сохранить проект как" : "Save Project As", Filter = "Ttrad Project (*.ttrad)|*.ttrad", DefaultExt = "ttrad", InitialDirectory = projectsFolder, FileName = currentLanguage == "ru" ? "Мои заметки.ttrad" : "My Notes.ttrad" };
             if (dialog.ShowDialog() == WinForms.DialogResult.OK) { currentProjectPath = dialog.FileName; SaveProjectToFile(currentProjectPath); }
         }
 
@@ -668,12 +635,7 @@ namespace Ttrad
             {
                 var drawingData = DrawingCanvas.Strokes.Select(s => new StrokeData { Points = s.StylusPoints.Select(p => new WpfPoint(p.X, p.Y)).ToList(), Color = s.DrawingAttributes.Color.ToString(), Width = s.DrawingAttributes.Width, Height = s.DrawingAttributes.Height }).ToList();
                 var textData = new List<TextElementData>();
-                foreach (Canvas container in textElements)
-                {
-                    if (container.Children.Count == 0) continue;
-                    var tb = container.Children[0] as WpfTextBlock;
-                    if (tb != null) textData.Add(new TextElementData { Text = tb.Text, X = Canvas.GetLeft(container), Y = Canvas.GetTop(container), FontFamily = tb.FontFamily.Source, FontSize = tb.FontSize, FontStyle = tb.FontStyle.ToString(), FontWeight = tb.FontWeight.ToString(), Color = ((SolidColorBrush)tb.Foreground).Color.ToString() });
-                }
+                foreach (Canvas container in textElements) { if (container.Children.Count == 0) continue; var tb = container.Children[0] as WpfTextBlock; if (tb != null) textData.Add(new TextElementData { Text = tb.Text, X = Canvas.GetLeft(container), Y = Canvas.GetTop(container), FontFamily = tb.FontFamily.Source, FontSize = tb.FontSize, FontStyle = tb.FontStyle.ToString(), FontWeight = tb.FontWeight.ToString(), Color = ((SolidColorBrush)tb.Foreground).Color.ToString() }); }
                 var project = new ProjectData { Drawing = drawingData, Text = textData, VirtualScreenWidth = SystemParameters.VirtualScreenWidth, VirtualScreenHeight = SystemParameters.VirtualScreenHeight };
                 var json = JsonSerializer.Serialize(project);
                 using (var fs = new FileStream(path, FileMode.Create))
@@ -687,23 +649,14 @@ namespace Ttrad
         private void OpenProject()
         {
             if (!ConfirmSaveBeforeAction(currentLanguage == "ru" ? "открытием другого" : "opening another")) return;
-            var dialog = new WinForms.OpenFileDialog
-            {
-                Title = currentLanguage == "ru" ? "Открыть проект" : "Open Project",
-                Filter = "Ttrad Project (*.ttrad)|*.ttrad",
-                DefaultExt = "ttrad",
-                InitialDirectory = projectsFolder
-            };
+            var dialog = new WinForms.OpenFileDialog { Title = currentLanguage == "ru" ? "Открыть проект" : "Open Project", Filter = "Ttrad Project (*.ttrad)|*.ttrad", DefaultExt = "ttrad", InitialDirectory = projectsFolder };
             if (dialog.ShowDialog() != WinForms.DialogResult.OK) return;
             try
             {
                 ProjectData? project = null;
                 using (var fs = new FileStream(dialog.FileName, FileMode.Open))
                 using (var archive = new ZipArchive(fs, ZipArchiveMode.Read))
-                {
-                    var entry = archive.GetEntry("data.json");
-                    if (entry != null) using (var reader = new StreamReader(entry.Open())) project = JsonSerializer.Deserialize<ProjectData>(reader.ReadToEnd());
-                }
+                { var entry = archive.GetEntry("data.json"); if (entry != null) using (var reader = new StreamReader(entry.Open())) project = JsonSerializer.Deserialize<ProjectData>(reader.ReadToEnd()); }
                 if (project == null) { WinForms.MessageBox.Show(currentLanguage == "ru" ? "Файл повреждён." : "File is corrupted.", "Ttrad", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Error); return; }
                 double currentW = SystemParameters.VirtualScreenWidth, currentH = SystemParameters.VirtualScreenHeight;
                 double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
@@ -734,21 +687,22 @@ namespace Ttrad
             {
                 var json = await _httpClient.GetStringAsync(VersionUrl);
                 var data = JsonSerializer.Deserialize<VersionData>(json);
-                if (data == null) return;
-                int currentVersion = int.Parse(strings.AppVersion);
-                int latestVersion = int.Parse(data.Version);
+                if (data == null || string.IsNullOrEmpty(data.version)) return;
+
+                if (!int.TryParse(strings.AppVersion, out int currentVersion) || !int.TryParse(data.version, out int latestVersion)) return;
+
                 if (latestVersion > currentVersion)
                 {
                     Dispatcher.Invoke(() =>
                     {
                         var result = WinForms.MessageBox.Show(
                             currentLanguage == "ru"
-                                ? $"Доступна новая версия {data.Version}! Текущая: {strings.AppVersion}. Открыть страницу загрузки?"
-                                : $"New version {data.Version} available! Current: {strings.AppVersion}. Open download page?",
+                                ? $"Доступна новая версия {data.version}! Текущая: {strings.AppVersion}. Открыть страницу загрузки?"
+                                : $"New version {data.version} available! Current: {strings.AppVersion}. Open download page?",
                             "Ttrad - " + (currentLanguage == "ru" ? "Обновление" : "Update"),
                             WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Information);
                         if (result == WinForms.DialogResult.Yes)
-                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(data.Url) { UseShellExecute = true });
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(data.url) { UseShellExecute = true });
                     });
                 }
                 else if (showUpToDate)
@@ -761,11 +715,9 @@ namespace Ttrad
             catch
             {
                 if (showUpToDate)
-                {
                     Dispatcher.Invoke(() => WinForms.MessageBox.Show(
                         currentLanguage == "ru" ? "Не удалось проверить обновления." : "Failed to check for updates.",
                         "Ttrad", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Warning));
-                }
             }
         }
 
@@ -821,8 +773,7 @@ namespace Ttrad
             var container = new Canvas(); Canvas.SetLeft(container, textInsertPoint.X); Canvas.SetTop(container, textInsertPoint.Y); container.Children.Add(textBlock); container.Background = System.Windows.Media.Brushes.Transparent;
             MakeTextDraggable(container, textBlock);
             textCanvas?.Children.Add(container); textElements.Add(container); currentTextBox = null;
-            _isDirty = true;
-            SaveTextElements();
+            _isDirty = true; SaveTextElements();
         }
 
         private void EditTextBlock(WpfTextBlock textBlock)
@@ -854,51 +805,27 @@ namespace Ttrad
             strings.SetLanguage(currentLanguage);
             notifyIcon.Text = $"{strings.AppName} — {strings.Disabled}\n{strings.LeftClick} | {strings.RightClick} | {strings.EscExit}";
             notifyIcon.Visible = true;
-
             if (!firstRunHintShown)
             {
-                firstRunHintShown = true;
-                SaveSettings();
-
-                WinForms.MessageBox.Show(
-                    "Программа работает в фоне.\nИщи значок в области уведомлений\n(правый нижний угол, рядом с часами).\nВозможно, он скрыт под значком ʌ — нажми на него.\n\nЛКМ по значку — переключение инструментов\nПКМ по значку — настройки\n\nПодробная инструкция — в меню настроек (ПКМ → Справка).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nProgram is running in background.\nLook for the icon in the notification area\n(bottom-right corner, near the clock).\nIt may be hidden under the ʌ icon — click it.\n\nLeft Click — switch tools\nRight Click — settings\n\nFull guide — in settings menu (Right Click → Help).",
-                    "Ttrad", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Information);
-
-                var screen = WinForms.Screen.PrimaryScreen;
-                var workingArea = screen.WorkingArea;
+                firstRunHintShown = true; SaveSettings();
+                WinForms.MessageBox.Show("Программа работает в фоне.\nИщи значок в области уведомлений\n(правый нижний угол, рядом с часами).\nВозможно, он скрыт под значком ʌ — нажми на него.\n\nЛКМ по значку — переключение инструментов\nПКМ по значку — настройки\n\nПодробная инструкция — в меню настроек (ПКМ → Справка).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nProgram is running in background.\nLook for the icon in the notification area\n(bottom-right corner, near the clock).\nIt may be hidden under the ʌ icon — click it.\n\nLeft Click — switch tools\nRight Click — settings\n\nFull guide — in settings menu (Right Click → Help).", "Ttrad", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Information);
+                var screen = WinForms.Screen.PrimaryScreen; var workingArea = screen.WorkingArea;
                 var darkBg = new SolidColorBrush(System.Windows.Media.Color.FromRgb(32, 32, 32));
                 var whiteColor = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 255, 255));
                 var lightGrayColor = new SolidColorBrush(System.Windows.Media.Color.FromRgb(224, 224, 224));
                 var lightAccent = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xe0, 0x93, 0x17));
                 var darkAccent = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x33, 0x3f, 0x4b));
                 var separatorColor = new SolidColorBrush(System.Windows.Media.Color.FromRgb(100, 100, 100));
-
-                var grid = new Grid();
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                grid.Margin = new Thickness(18, 14, 18, 8);
-
+                var grid = new Grid(); grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); grid.Margin = new Thickness(18, 14, 18, 8);
                 var circleGrid = new Grid { Width = 24, Height = 24, HorizontalAlignment = WpfHorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 10) };
                 var leftHalf = new System.Windows.Shapes.Ellipse { Width = 24, Height = 24, Fill = lightAccent, Clip = new RectangleGeometry(new Rect(0, 0, 12, 24)) };
                 var rightHalf = new System.Windows.Shapes.Ellipse { Width = 24, Height = 24, Fill = darkAccent, Clip = new RectangleGeometry(new Rect(12, 0, 12, 24)) };
-                circleGrid.Children.Add(leftHalf); circleGrid.Children.Add(rightHalf);
-                Grid.SetRow(circleGrid, 0); grid.Children.Add(circleGrid);
-
+                circleGrid.Children.Add(leftHalf); circleGrid.Children.Add(rightHalf); Grid.SetRow(circleGrid, 0); grid.Children.Add(circleGrid);
                 var smallIcon = new Grid { Width = 14, Height = 14, Margin = new Thickness(2, 0, 2, 0) };
                 var smallLeft = new System.Windows.Shapes.Ellipse { Width = 14, Height = 14, Fill = lightAccent, Clip = new RectangleGeometry(new Rect(0, 0, 7, 14)) };
                 var smallRight = new System.Windows.Shapes.Ellipse { Width = 14, Height = 14, Fill = darkAccent, Clip = new RectangleGeometry(new Rect(7, 0, 7, 14)) };
                 smallIcon.Children.Add(smallLeft); smallIcon.Children.Add(smallRight);
-
-                var textBlock = new WpfTextBlock
-                {
-                    FontFamily = new WpfFontFamily("Segoe UI"),
-                    FontSize = 12,
-                    Foreground = lightGrayColor,
-                    HorizontalAlignment = WpfHorizontalAlignment.Center,
-                    TextAlignment = TextAlignment.Center,
-                    Margin = new Thickness(0, 0, 0, 8)
-                };
+                var textBlock = new WpfTextBlock { FontFamily = new WpfFontFamily("Segoe UI"), FontSize = 12, Foreground = lightGrayColor, HorizontalAlignment = WpfHorizontalAlignment.Center, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 8) };
                 textBlock.Inlines.Add(new Run("Ищи такой значок в области уведомлений.\n") { FontWeight = WpfFontWeights.SemiBold });
                 textBlock.Inlines.Add(new Run("Он может быть скрыт под значком "));
                 textBlock.Inlines.Add(new Run("ʌ") { FontSize = 16, FontWeight = WpfFontWeights.Bold, Foreground = whiteColor });
@@ -915,24 +842,16 @@ namespace Ttrad
                 textBlock.Inlines.Add(new InlineUIContainer(new Grid { Width = 14, Height = 14, Margin = new Thickness(2, 0, 2, 0), Children = { new System.Windows.Shapes.Ellipse { Width = 14, Height = 14, Fill = lightAccent, Clip = new RectangleGeometry(new Rect(0, 0, 7, 14)) }, new System.Windows.Shapes.Ellipse { Width = 14, Height = 14, Fill = darkAccent, Clip = new RectangleGeometry(new Rect(7, 0, 7, 14)) } } }));
                 textBlock.Inlines.Add(new Run(" icon.") { FontWeight = WpfFontWeights.SemiBold });
                 Grid.SetRow(textBlock, 1); grid.Children.Add(textBlock);
-
                 var arrowCanvas = new Canvas { Width = 20, Height = 12, HorizontalAlignment = WpfHorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 0) };
                 var line1 = new System.Windows.Shapes.Line { X1 = 10, Y1 = 0, X2 = 10, Y2 = 8, Stroke = lightGrayColor, StrokeThickness = 1.5 };
                 var line2 = new System.Windows.Shapes.Line { X1 = 5, Y1 = 5, X2 = 10, Y2 = 8, Stroke = lightGrayColor, StrokeThickness = 1.5 };
                 var line3 = new System.Windows.Shapes.Line { X1 = 15, Y1 = 5, X2 = 10, Y2 = 8, Stroke = lightGrayColor, StrokeThickness = 1.5 };
-                arrowCanvas.Children.Add(line1); arrowCanvas.Children.Add(line2); arrowCanvas.Children.Add(line3);
-                Grid.SetRow(arrowCanvas, 2); grid.Children.Add(arrowCanvas);
-
+                arrowCanvas.Children.Add(line1); arrowCanvas.Children.Add(line2); arrowCanvas.Children.Add(line3); Grid.SetRow(arrowCanvas, 2); grid.Children.Add(arrowCanvas);
                 trayHintWindow = new Window { Title = "", Width = 400, Height = 280, WindowStyle = WindowStyle.None, Topmost = true, ShowInTaskbar = false, AllowsTransparency = true, Background = darkBg, Content = grid, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.Manual };
-                trayHintWindow.Show();
-                trayHintWindow.Left = workingArea.Right - trayHintWindow.Width - 10;
-                trayHintWindow.Top = workingArea.Bottom - trayHintWindow.Height - 5;
-
+                trayHintWindow.Show(); trayHintWindow.Left = workingArea.Right - trayHintWindow.Width - 10; trayHintWindow.Top = workingArea.Bottom - trayHintWindow.Height - 5;
                 var closeTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(12) };
-                closeTimer.Tick += (s2, args2) => { trayHintWindow?.Close(); trayHintWindow = null; closeTimer.Stop(); };
-                closeTimer.Start();
+                closeTimer.Tick += (s2, args2) => { trayHintWindow?.Close(); trayHintWindow = null; closeTimer.Stop(); }; closeTimer.Start();
             }
-
             notifyIcon.MouseClick += (s, e) =>
             {
                 if (trayHintWindow != null) { trayHintWindow.Close(); trayHintWindow = null; }
@@ -945,9 +864,7 @@ namespace Ttrad
                     UpdatePen(); SetDrawingState(isDrawingEnabled); UpdateTrayIcon();
                 }
             };
-            settingsMenu = new WinForms.ContextMenuStrip();
-            SetupSettingsMenu();
-            notifyIcon.ContextMenuStrip = settingsMenu;
+            settingsMenu = new WinForms.ContextMenuStrip(); SetupSettingsMenu(); notifyIcon.ContextMenuStrip = settingsMenu;
         }
 
         private void SetupSettingsMenu()
@@ -955,45 +872,36 @@ namespace Ttrad
             if (settingsMenu == null) return;
             settingsMenu.Items.Clear();
             settingsMenu.AutoClose = false;
-
             var applyCloseItem = new WinForms.ToolStripMenuItem(strings.ApplyAndClose);
             applyCloseItem.Click += (s, e) => { settingsMenu?.Close(); };
             settingsMenu.Items.Add(applyCloseItem);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
-
             var penItem = new WinForms.ToolStripMenuItem();
             penItem.Paint += (s, pe) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || pe.Graphics == null) return; pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality; pe.Graphics.Clear(mi.BackColor); try { var a = System.Reflection.Assembly.GetExecutingAssembly(); using (var st = a.GetManifestResourceStream("Ttrad.icon_pen_20.png")) { if (st != null) using (var bmp = new Bitmap(st)) pe.Graphics.DrawImage(bmp, 10, 3, 18, 18); } } catch { } pe.Graphics.DrawString(strings.Pen, new System.Drawing.Font("Segoe UI", 9), System.Drawing.Brushes.Black, 35, 7); };
             penItem.Click += (s, e) => { isErasing = false; isTextMode = false; UpdatePen(); isDrawingEnabled = true; SetDrawingState(true); UpdateTrayIcon(); settingsMenu?.Close(); };
             settingsMenu.Items.Add(penItem);
-
             var eraserItem = new WinForms.ToolStripMenuItem();
             eraserItem.Paint += (s, pe) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || pe.Graphics == null) return; pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality; pe.Graphics.Clear(mi.BackColor); try { var a = System.Reflection.Assembly.GetExecutingAssembly(); using (var st = a.GetManifestResourceStream("Ttrad.icon_eraser_20.png")) { if (st != null) using (var bmp = new Bitmap(st)) pe.Graphics.DrawImage(bmp, 10, 3, 18, 18); } } catch { } pe.Graphics.DrawString(strings.Eraser, new System.Drawing.Font("Segoe UI", 9), System.Drawing.Brushes.Black, 35, 7); };
             eraserItem.Click += (s, e) => { isErasing = true; isTextMode = false; UpdatePen(); isDrawingEnabled = true; SetDrawingState(true); UpdateTrayIcon(); settingsMenu?.Close(); };
             settingsMenu.Items.Add(eraserItem);
-
             var textItem = new WinForms.ToolStripMenuItem();
             textItem.Paint += (s, pe) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || pe.Graphics == null) return; pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality; pe.Graphics.Clear(mi.BackColor); try { var a = System.Reflection.Assembly.GetExecutingAssembly(); using (var st = a.GetManifestResourceStream("Ttrad.icon_text_20.png")) { if (st != null) using (var bmp = new Bitmap(st)) pe.Graphics.DrawImage(bmp, 10, 3, 18, 18); } } catch { } pe.Graphics.DrawString(strings.Text, new System.Drawing.Font("Segoe UI", 9), System.Drawing.Brushes.Black, 35, 7); };
             textItem.Click += (s, e) => { isErasing = false; isTextMode = true; UpdatePen(); isDrawingEnabled = true; SetDrawingState(true); UpdateTrayIcon(); settingsMenu?.Close(); };
             settingsMenu.Items.Add(textItem);
-
             var offItem = new WinForms.ToolStripMenuItem();
             offItem.Paint += (s, pe) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || pe.Graphics == null) return; pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality; pe.Graphics.Clear(mi.BackColor); try { var a = System.Reflection.Assembly.GetExecutingAssembly(); using (var st = a.GetManifestResourceStream("Ttrad.icon_off_20.png")) { if (st != null) using (var bmp = new Bitmap(st)) pe.Graphics.DrawImage(bmp, 10, 3, 18, 18); } } catch { } pe.Graphics.DrawString(strings.Off, new System.Drawing.Font("Segoe UI", 9), System.Drawing.Brushes.Black, 35, 7); };
             offItem.Click += (s, e) => { isDrawingEnabled = false; isTextMode = false; _penUndoStack.Clear(); _eraserUndoStack.Clear(); if (undoMenuItem != null) undoMenuItem.Enabled = false; SetDrawingState(false); UpdateTrayIcon(); settingsMenu?.Close(); };
             settingsMenu.Items.Add(offItem);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
-
             undoMenuItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Отменить" : "Undo");
-            undoMenuItem.Enabled = false;
-            undoMenuItem.Click += (s, e) => { UndoLastAction(); };
+            undoMenuItem.Enabled = false; undoMenuItem.Click += (s, e) => { UndoLastAction(); };
             settingsMenu.Items.Add(undoMenuItem);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
-
             thicknessMenuItem = new WinForms.ToolStripMenuItem();
             thicknessMenuItem.Paint += (s, pe) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || pe.Graphics == null) return; pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; pe.Graphics.Clear(mi.BackColor); using (var font = new System.Drawing.Font("Segoe UI", 9)) { string text = strings.Thickness + ":"; var ts = pe.Graphics.MeasureString(text, font); float ty = (mi.Height - ts.Height) / 2; pe.Graphics.DrawString(text, font, System.Drawing.Brushes.Black, 35, ty); float sx = 100 + (float)currentThickness / 2; float len = 40 - (float)currentThickness * 0.9f; float ex = sx + len; int ly = mi.Height / 2; using (var p = new System.Drawing.Pen(System.Drawing.Color.Black, (float)currentThickness)) { p.StartCap = System.Drawing.Drawing2D.LineCap.Round; p.EndCap = System.Drawing.Drawing2D.LineCap.Round; pe.Graphics.DrawLine(p, sx, ly, ex, ly); } } pe.Graphics.DrawString("▶", new System.Drawing.Font("Segoe UI", 9), System.Drawing.Brushes.Gray, mi.Width - 25, (mi.Height - 12) / 2); };
             var thicknessMenu = new WinForms.ToolStripMenuItem(); thicknessMenu.DropDownItems.Add(thicknessMenuItem);
             foreach (var t in new[] { 2, 4, 6, 8, 12, 16, 20 }) { var it = CreateThicknessItem(t); it.Click += (s, e) => { currentThickness = t; UpdatePen(); thicknessMenuItem?.Invalidate(); }; thicknessMenuItem.DropDownItems.Add(it); }
             settingsMenu.Items.Add(thicknessMenuItem);
-
             colorMenuItem = new WinForms.ToolStripMenuItem();
             colorMenuItem.Paint += (s, pe) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || pe.Graphics == null) return; pe.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; pe.Graphics.Clear(mi.BackColor); using (var font = new System.Drawing.Font("Segoe UI", 9)) { string label = currentLanguage == "ru" ? "Цвет:" : "Color:"; var ts = pe.Graphics.MeasureString(label, font); float ty = (mi.Height - ts.Height) / 2; pe.Graphics.DrawString(label, font, System.Drawing.Brushes.Black, 35, ty); int sq = 14; float sqx = 100; float sqy = (mi.Height - sq) / 2; using (var brush = new SolidBrush(System.Drawing.Color.FromArgb(penColor.R, penColor.G, penColor.B))) pe.Graphics.FillRectangle(brush, sqx, sqy, sq, sq); } pe.Graphics.DrawString("▶", new System.Drawing.Font("Segoe UI", 9), System.Drawing.Brushes.Gray, mi.Width - 25, (mi.Height - 12) / 2); };
             var colorMenu = new WinForms.ToolStripMenuItem(); colorMenu.DropDownItems.Add(colorMenuItem);
@@ -1001,112 +909,37 @@ namespace Ttrad
             foreach (var (name, color) in colors) { var item = CreateColorItem(name, color); item.Click += (s, e) => { penColor = color; UpdatePen(); colorMenuItem?.Invalidate(); }; colorMenuItem.DropDownItems.Add(item); }
             settingsMenu.Items.Add(colorMenuItem);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
-
-            // Проекты
-            var newProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Новый" : "New");
-            newProjectItem.Click += (s, e) => { NewProject(); };
-            settingsMenu.Items.Add(newProjectItem);
-
-            var saveProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Сохранить" : "Save");
-            saveProjectItem.Click += (s, e) => { SaveProject(); };
-            settingsMenu.Items.Add(saveProjectItem);
-
-            var saveAsProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Сохранить как..." : "Save As...");
-            saveAsProjectItem.Click += (s, e) => { SaveProjectAs(); };
-            settingsMenu.Items.Add(saveAsProjectItem);
-
-            var openProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Открыть..." : "Open...");
-            openProjectItem.Click += (s, e) => { OpenProject(); };
-            settingsMenu.Items.Add(openProjectItem);
-
+            var newProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Новый" : "New"); newProjectItem.Click += (s, e) => { NewProject(); }; settingsMenu.Items.Add(newProjectItem);
+            var saveProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Сохранить" : "Save"); saveProjectItem.Click += (s, e) => { SaveProject(); }; settingsMenu.Items.Add(saveProjectItem);
+            var saveAsProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Сохранить как..." : "Save As..."); saveAsProjectItem.Click += (s, e) => { SaveProjectAs(); }; settingsMenu.Items.Add(saveAsProjectItem);
+            var openProjectItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Открыть..." : "Open..."); openProjectItem.Click += (s, e) => { OpenProject(); }; settingsMenu.Items.Add(openProjectItem);
             var clearItem = new WinForms.ToolStripMenuItem(strings.ClearAll);
-            clearItem.Click += (s, e) =>
-            {
-                if (HasUnsavedWork())
-                {
-                    var saveResult = WinForms.MessageBox.Show(
-                        currentLanguage == "ru" ? "Сохранить текущие заметки перед очисткой?" : "Save current notes before clearing?",
-                        "Ttrad", WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question);
-                    if (saveResult == WinForms.DialogResult.Yes) SaveProject();
-                    else if (saveResult == WinForms.DialogResult.Cancel) return;
-                }
-                if (WinForms.MessageBox.Show(strings.ClearConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Warning) == WinForms.DialogResult.Yes)
-                {
-                    DrawingCanvas.Strokes.Clear();
-                    foreach (var el in textElements) textCanvas?.Children.Remove(el);
-                    textElements.Clear();
-                    _penUndoStack.Clear(); _eraserUndoStack.Clear();
-                    if (undoMenuItem != null) undoMenuItem.Enabled = false;
-                    _isDirty = false;
-                    SaveDrawing(); SaveTextElements();
-                }
-            };
+            clearItem.Click += (s, e) => { if (HasUnsavedWork()) { var saveResult = WinForms.MessageBox.Show(currentLanguage == "ru" ? "Сохранить текущие заметки перед очисткой?" : "Save current notes before clearing?", "Ttrad", WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question); if (saveResult == WinForms.DialogResult.Yes) SaveProject(); else if (saveResult == WinForms.DialogResult.Cancel) return; } if (WinForms.MessageBox.Show(strings.ClearConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Warning) == WinForms.DialogResult.Yes) { DrawingCanvas.Strokes.Clear(); foreach (var el in textElements) textCanvas?.Children.Remove(el); textElements.Clear(); _penUndoStack.Clear(); _eraserUndoStack.Clear(); if (undoMenuItem != null) undoMenuItem.Enabled = false; _isDirty = false; SaveDrawing(); SaveTextElements(); } };
             settingsMenu.Items.Add(clearItem);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
-
-            // Справка и язык
             var helpItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Справка" : "Help");
-            helpItem.Click += (s, e) =>
-            {
-                if (currentLanguage == "ru")
-                    WinForms.MessageBox.Show(
-                        "ЛКМ по иконке в трее — переключение инструментов\nПКМ по иконке — настройки\n\nКарандаш — рисуй по экрану\nЛастик — стирай нарисованное (толщина меняется)\n\nТекст:\n   • ЛКМ по пустому месту — ввод текста\n   • ЛКМ + удержание по тексту — перетаскивание\n   • ПКМ по тексту — редактировать / удалить\n\nОтменить — отмена последнего действия\n\nНовый/Сохранить/Открыть — проекты (.ttrad)\n\nESC — выключить любой режим",
-                        "Ttrad - Справка", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Information);
-                else
-                    WinForms.MessageBox.Show(
-                        "Left Click on tray icon — switch tools\nRight Click on tray icon — settings\n\nPen — draw on screen\nEraser — erase drawings (thickness adjustable)\n\nText:\n   • Left Click on empty space — add text\n   • Left Click + hold on text — drag\n   • Right Click on text — edit / delete\n\nUndo — restore last action\n\nNew/Save/Open — projects (.ttrad)\n\nESC — exit any mode",
-                        "Ttrad - Help", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Information);
-            };
+            helpItem.Click += (s, e) => { if (currentLanguage == "ru") WinForms.MessageBox.Show("ЛКМ по иконке в трее — переключение инструментов\nПКМ по иконке — настройки\n\nКарандаш — рисуй по экрану\nЛастик — стирай нарисованное (толщина меняется)\n\nТекст:\n   • ЛКМ по пустому месту — ввод текста\n   • ЛКМ + удержание по тексту — перетаскивание\n   • ПКМ по тексту — редактировать / удалить\n\nОтменить — отмена последнего действия\n\nНовый/Сохранить/Открыть — проекты (.ttrad)\n\nESC — выключить любой режим", "Ttrad - Справка", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Information); else WinForms.MessageBox.Show("Left Click on tray icon — switch tools\nRight Click on tray icon — settings\n\nPen — draw on screen\nEraser — erase drawings (thickness adjustable)\n\nText:\n   • Left Click on empty space — add text\n   • Left Click + hold on text — drag\n   • Right Click on text — edit / delete\n\nUndo — restore last action\n\nNew/Save/Open — projects (.ttrad)\n\nESC — exit any mode", "Ttrad - Help", WinForms.MessageBoxButtons.OK, WinForms.MessageBoxIcon.Information); };
             settingsMenu.Items.Add(helpItem);
-
             var langMenu = new WinForms.ToolStripMenuItem(strings.Language);
             var ru = new WinForms.ToolStripMenuItem("Русский") { Checked = currentLanguage == "ru" }; ru.Click += (s, e) => { currentLanguage = "ru"; SaveSettings(); UpdateTrayIcon(); SetupSettingsMenu(); };
             var en = new WinForms.ToolStripMenuItem("English") { Checked = currentLanguage == "en" }; en.Click += (s, e) => { currentLanguage = "en"; SaveSettings(); UpdateTrayIcon(); SetupSettingsMenu(); };
-            langMenu.DropDownItems.Add(ru); langMenu.DropDownItems.Add(en);
-            settingsMenu.Items.Add(langMenu);
+            langMenu.DropDownItems.Add(ru); langMenu.DropDownItems.Add(en); settingsMenu.Items.Add(langMenu);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
-
-            // Автозагрузка и обновления
             var startupItem = new WinForms.ToolStripMenuItem(strings.Startup); startupItem.Checked = IsStartupEnabled();
-            startupItem.Click += (s, e) => { startupItem.Checked = !startupItem.Checked; SetStartup(startupItem.Checked); };
-            settingsMenu.Items.Add(startupItem);
-
+            startupItem.Click += (s, e) => { startupItem.Checked = !startupItem.Checked; SetStartup(startupItem.Checked); }; settingsMenu.Items.Add(startupItem);
             var checkUpdatesItem = new WinForms.ToolStripMenuItem(currentLanguage == "ru" ? "Проверить обновления" : "Check for Updates");
-            checkUpdatesItem.Click += (s, e) => { Task.Run(() => CheckForUpdates(true)); };
-            settingsMenu.Items.Add(checkUpdatesItem);
+            checkUpdatesItem.Click += (s, e) => { Task.Run(() => CheckForUpdates(true)); }; settingsMenu.Items.Add(checkUpdatesItem);
             settingsMenu.Items.Add(new WinForms.ToolStripSeparator());
-
-            // Выход
             var exitItem = new WinForms.ToolStripMenuItem(strings.Exit);
-            exitItem.Click += (s, e) =>
-            {
-                if (_isDirty)
-                {
-                    var saveResult = WinForms.MessageBox.Show(
-                        currentLanguage == "ru" ? "Сохранить заметки перед выходом?" : "Save notes before exit?",
-                        "Ttrad", WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question);
-                    if (saveResult == WinForms.DialogResult.Yes) SaveProject();
-                    else if (saveResult == WinForms.DialogResult.Cancel) return;
-                }
-                if (WinForms.MessageBox.Show(strings.ExitConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Question) == WinForms.DialogResult.Yes)
-                { isExiting = true; notifyIcon?.Dispose(); WpfApplication.Current.Shutdown(); }
-            };
+            exitItem.Click += (s, e) => { if (_isDirty) { var saveResult = WinForms.MessageBox.Show(currentLanguage == "ru" ? "Сохранить заметки перед выходом?" : "Save notes before exit?", "Ttrad", WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question); if (saveResult == WinForms.DialogResult.Yes) SaveProject(); else if (saveResult == WinForms.DialogResult.Cancel) return; } if (WinForms.MessageBox.Show(strings.ExitConfirm, strings.AppName, WinForms.MessageBoxButtons.YesNo, WinForms.MessageBoxIcon.Question) == WinForms.DialogResult.Yes) { isExiting = true; notifyIcon?.Dispose(); WpfApplication.Current.Shutdown(); } };
             settingsMenu.Items.Add(exitItem);
         }
 
         private WinForms.ToolStripMenuItem CreateThicknessItem(double t)
-        {
-            var it = new WinForms.ToolStripMenuItem(); it.Text = "";
-            it.Paint += (s, e) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || e.Graphics == null) return; e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; e.Graphics.Clear(mi.BackColor); int y = mi.Height / 2; float sx = 10 + (float)t / 2; float len = 40 - (float)t * 0.9f; float ex = sx + len; using (var p = new System.Drawing.Pen(System.Drawing.Color.Black, (float)t)) { p.StartCap = System.Drawing.Drawing2D.LineCap.Round; p.EndCap = System.Drawing.Drawing2D.LineCap.Round; e.Graphics.DrawLine(p, sx, y, ex, y); } };
-            return it;
-        }
+        { var it = new WinForms.ToolStripMenuItem(); it.Text = ""; it.Paint += (s, e) => { var mi = s as WinForms.ToolStripMenuItem; if (mi == null || e.Graphics == null) return; e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; e.Graphics.Clear(mi.BackColor); int y = mi.Height / 2; float sx = 10 + (float)t / 2; float len = 40 - (float)t * 0.9f; float ex = sx + len; using (var p = new System.Drawing.Pen(System.Drawing.Color.Black, (float)t)) { p.StartCap = System.Drawing.Drawing2D.LineCap.Round; p.EndCap = System.Drawing.Drawing2D.LineCap.Round; e.Graphics.DrawLine(p, sx, y, ex, y); } }; return it; }
 
         private WinForms.ToolStripMenuItem CreateColorItem(string name, WpfColor color)
-        {
-            var item = new WinForms.ToolStripMenuItem(); item.Text = ""; item.ToolTipText = name;
-            item.Paint += (sender, e) => { var mi = sender as WinForms.ToolStripMenuItem; if (mi == null || e.Graphics == null) return; e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; e.Graphics.Clear(mi.BackColor); int sq = 16, x = 10, y = (mi.Height - sq) / 2; using (var brush = new SolidBrush(System.Drawing.Color.FromArgb(color.R, color.G, color.B))) e.Graphics.FillRectangle(brush, x, y, sq, sq); };
-            return item;
-        }
+        { var item = new WinForms.ToolStripMenuItem(); item.Text = ""; item.ToolTipText = name; item.Paint += (sender, e) => { var mi = sender as WinForms.ToolStripMenuItem; if (mi == null || e.Graphics == null) return; e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias; e.Graphics.Clear(mi.BackColor); int sq = 16, x = 10, y = (mi.Height - sq) / 2; using (var brush = new SolidBrush(System.Drawing.Color.FromArgb(color.R, color.G, color.B))) e.Graphics.FillRectangle(brush, x, y, sq, sq); }; return item; }
 
         private bool IsStartupEnabled()
         { try { using var k = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true); return k?.GetValue("Ttrad") != null; } catch { return false; } }
@@ -1116,18 +949,7 @@ namespace Ttrad
 
         private void OnClosing(object? sender, CancelEventArgs e)
         {
-            if (!isExiting)
-            {
-                if (_isDirty)
-                {
-                    var result = WinForms.MessageBox.Show(
-                        currentLanguage == "ru" ? "Сохранить заметки перед выходом?" : "Save notes before exit?",
-                        "Ttrad", WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question);
-                    if (result == WinForms.DialogResult.Yes) SaveProject();
-                    else if (result == WinForms.DialogResult.Cancel) { e.Cancel = true; return; }
-                }
-                SaveDrawing(); SaveTextElements();
-            }
+            if (!isExiting) { if (_isDirty) { var result = WinForms.MessageBox.Show(currentLanguage == "ru" ? "Сохранить заметки перед выходом?" : "Save notes before exit?", "Ttrad", WinForms.MessageBoxButtons.YesNoCancel, WinForms.MessageBoxIcon.Question); if (result == WinForms.DialogResult.Yes) SaveProject(); else if (result == WinForms.DialogResult.Cancel) { e.Cancel = true; return; } } SaveDrawing(); SaveTextElements(); }
             if (_currentRegion != IntPtr.Zero) { DeleteObject(_currentRegion); _currentRegion = IntPtr.Zero; }
             notifyIcon?.Dispose();
         }
@@ -1135,7 +957,7 @@ namespace Ttrad
         private class StrokeData { public List<WpfPoint> Points { get; set; } = new(); public string Color { get; set; } = ""; public double Width { get; set; } public double Height { get; set; } }
         private class TextElementData { public string Text { get; set; } = ""; public double X { get; set; } public double Y { get; set; } public string FontFamily { get; set; } = "Segoe UI"; public double FontSize { get; set; } = 16; public string FontStyle { get; set; } = "Normal"; public string FontWeight { get; set; } = "Normal"; public string Color { get; set; } = "#FFFF0000"; }
         private class ProjectData { public List<StrokeData> Drawing { get; set; } = new(); public List<TextElementData> Text { get; set; } = new(); public double VirtualScreenWidth { get; set; } public double VirtualScreenHeight { get; set; } }
-        private class VersionData { public string Version { get; set; } = ""; public string Url { get; set; } = ""; }
+        private class VersionData { public string version { get; set; } = ""; public string url { get; set; } = ""; }
         private class AppSettings { public string? Language { get; set; } public bool FirstRunHintShown { get; set; } public bool EscHintShown { get; set; } }
 
         private class AppStrings
@@ -1147,10 +969,8 @@ namespace Ttrad
             public string LeftClick { get; set; } = "ЛКМ — переключить"; public string RightClick { get; set; } = "ПКМ — настройки"; public string EscExit { get; set; } = "ESC — выкл";
             public string Language { get; set; } = "Язык"; public string Thickness { get; set; } = "Толщина"; public string PencilColor { get; set; } = "Цвет карандаша";
             public string ApplyAndClose { get; set; } = "Применить и закрыть"; public string ClearAll { get; set; } = "Очистить всё";
-            public string ClearConfirm { get; set; } = "Будут удалены все рисунки и весь текст. Продолжить?";
-            public string Startup { get; set; } = "Запускать с Windows"; public string Exit { get; set; } = "Выход"; public string ExitConfirm { get; set; } = "Выйти из Ttrad?";
-            public string AppVersion { get; set; } = "18";
-
+            public string ClearConfirm { get; set; } = "Будут удалены все рисунки и весь текст. Продолжить?"; public string Startup { get; set; } = "Запускать с Windows";
+            public string Exit { get; set; } = "Выход"; public string ExitConfirm { get; set; } = "Выйти из Ttrad?"; public string AppVersion { get; set; } = "18";
             public void SetLanguage(string l)
             {
                 if (l == "ru") { AppName = "Ttrad"; Pen = "Карандаш"; Eraser = "Ластик"; Text = "Текст"; EnterText = "Введите текст:"; Edit = "Редактировать"; Delete = "Удалить"; On = "ON"; Off = "Выключено"; Disabled = "Отключено"; LeftClick = "ЛКМ — переключить"; RightClick = "ПКМ — настройки"; EscExit = "ESC — выкл"; Language = "Язык"; Thickness = "Толщина"; PencilColor = "Цвет карандаша"; ApplyAndClose = "Применить и закрыть"; ClearAll = "Очистить всё"; ClearConfirm = "Будут удалены все рисунки и весь текст. Продолжить?"; Startup = "Запускать с Windows"; Exit = "Выход"; ExitConfirm = "Выйти из Ttrad?"; AppVersion = "18"; }
