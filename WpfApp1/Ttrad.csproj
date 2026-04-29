@@ -37,6 +37,12 @@
 		<FileVersion>1.0.0.1</FileVersion>
 		<AssemblyVersion>1.0.0.0</AssemblyVersion>
 	</PropertyGroup>
+	<ItemGroup>
+	  <Compile Remove=".github\**" />
+	  <EmbeddedResource Remove=".github\**" />
+	  <None Remove=".github\**" />
+	  <Page Remove=".github\**" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<None Remove="icon_eraser_20.png" />
@@ -72,10 +78,6 @@
 		<EmbeddedResource Include="icon_text_20.png" />
 		<EmbeddedResource Include="icon_text_32.png" />
 		<EmbeddedResource Include="icon_tt.ico" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <None Include=".github\workflows\release.ym1" />
 	</ItemGroup>
 
 </Project>
