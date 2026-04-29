@@ -1,0 +1,30 @@
+name: Build and Sign EXE
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+    
+    - name: Build
+      run: dotnet publish -c Release -o publish
+    
+    - name: Sign EXE
+      run: |
+        dotnet tool install --global signcli
+        signcli sign --file publish/Ttrad.exe
+    
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: publish/Ttrad.exe

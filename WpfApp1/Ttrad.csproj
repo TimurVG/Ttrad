@@ -74,4 +74,8 @@
 		<EmbeddedResource Include="icon_tt.ico" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <None Include=".github\workflows\release.ym1" />
+	</ItemGroup>
+
 </Project>
