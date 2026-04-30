@@ -1,4 +1,4 @@
-name: Build and Sign EXE
+name: Build
 on: [workflow_dispatch]
 jobs:
   build:
@@ -9,11 +9,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: dotnet publish WpfApp1/WpfApp1.csproj -c Release -o publish
-      - uses: vedantmgoyal2009/self-sign-codesign@v1
-        with:
-          path: publish/Ttrad.exe
-          name: TVG
       - uses: actions/upload-artifact@v4
         with:
-          name: Ttrad-Signed
+          name: Ttrad
           path: publish/Ttrad.exe
