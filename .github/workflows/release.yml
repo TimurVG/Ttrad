@@ -1,0 +1,22 @@
+name: Build and Sign
+on:
+  push:
+    tags: ['v*']
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+    - run: dotnet publish WpfApp1/WpfApp1.csproj -c Release -o publish
+    - uses: vedantmgoyal2009/self-sign-codesign@v1
+      with:
+        path: publish/Ttrad.exe
+        name: TVG
+    - uses: softprops/action-gh-release@v1
+      with:
+        files: publish/Ttrad.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
